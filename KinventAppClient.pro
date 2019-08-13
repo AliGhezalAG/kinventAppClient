@@ -23,7 +23,6 @@ SOURCES += \
         deviceinfo.cpp \
         kinventclient.cpp \
         serviceinfo.cpp \
-        mainwindow.cpp \
         main.cpp
 
 # Default rules for deployment.
@@ -36,5 +35,4 @@ HEADERS += \
     device.h \
     deviceinfo.h \
     kinventclient.h \
-    serviceinfo.h \
-    mainwindow.h
+    serviceinfo.h

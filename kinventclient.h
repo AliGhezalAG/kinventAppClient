@@ -15,6 +15,7 @@ private slots:
 public:
     KinventClient();
     void startClient();
+    void connectDevice();
 
 private:
     Device *deviceHandler;

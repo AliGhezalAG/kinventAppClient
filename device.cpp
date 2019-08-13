@@ -54,6 +54,8 @@ Device::Device():
 {
     //! [les-devicediscovery-1]
     discoveryAgent = new QBluetoothDeviceDiscoveryAgent();
+    discoveryAgent->setLowEnergyDiscoveryTimeout(5000);
+
     connect(discoveryAgent, SIGNAL(deviceDiscovered(const QBluetoothDeviceInfo&)),
             this, SLOT(addDevice(const QBluetoothDeviceInfo&)));
     connect(discoveryAgent, SIGNAL(error(QBluetoothDeviceDiscoveryAgent::Error)),
@@ -83,7 +85,7 @@ void Device::startDeviceDiscovery()
     devices.clear();
     emit devicesUpdated();
 
-    setUpdate("Scanning for devices ...");
+    setUpdate("Scanning for KForce devices ...");
     //! [les-devicediscovery-2]
     discoveryAgent->start();
     //! [les-devicediscovery-2]
@@ -99,8 +101,10 @@ void Device::addDevice(const QBluetoothDeviceInfo &info)
 {
     if (info.coreConfigurations() & QBluetoothDeviceInfo::LowEnergyCoreConfiguration) {
         DeviceInfo *d = new DeviceInfo(info);
-        devices.append(d);
-        setUpdate("Last device added: " + d->getName());
+        if (d->getName().contains("KFORCE", Qt::CaseInsensitive)){
+            devices.append(d);
+            //setUpdate("Last device added: " + d->getName());
+        }
     }
 }
 //! [les-devicediscovery-3]
@@ -111,10 +115,15 @@ void Device::deviceScanFinished()
     m_deviceScanState = false;
     m_deviceScanFinished = true;
     emit stateChanged();
-    if (devices.isEmpty())
-        setUpdate("No Low Energy devices found...");
-    else
-        setUpdate("Done! Scan Again!");
+    if (devices.isEmpty()){
+        setUpdate("No KForce devices found...");
+     } else {
+        setUpdate("Device scan done!");
+        setUpdate(QString::number(devices.size()) + " devices found:");
+        for (int i = 0; i < devices.size(); i++){
+            setUpdate((reinterpret_cast<DeviceInfo *>(devices.at(i)))->getName());
+        }
+    }
     emit scanFinished();
 }
 

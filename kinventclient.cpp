@@ -4,7 +4,7 @@ KinventClient::KinventClient()
 {
     deviceHandler = new Device();
     connect(deviceHandler, &Device::updateChanged, this, &KinventClient::displayUpdate);
-    connect(deviceHandler, &Device::scanFinished, this, &KinventClient::displayUpdate);
+    connect(deviceHandler, &Device::scanFinished, this, &KinventClient::connectDevice);
     connect(deviceHandler, &Device::servicesScanFinished, this, &KinventClient::displayUpdate);
 }
 
@@ -16,4 +16,8 @@ void KinventClient::displayUpdate()
 void KinventClient::startClient()
 {
     deviceHandler->startDeviceDiscovery();
+}
+
+void KinventClient::connectDevice(){
+
 }
