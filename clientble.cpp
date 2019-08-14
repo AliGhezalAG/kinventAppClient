@@ -2,7 +2,7 @@
 #include <QDebug>
 #include <QtEndian>
 
-ClientBLE::ClientBLE() : m_controller(nullptr), m_service(nullptr), m_etatConnexion(false), m_compteur(0)
+ClientBLE::ClientBLE(QString address) : m_controller(nullptr), m_service(nullptr), m_etatConnexion(false), m_compteur(0), deviceAddress(address)
 {
     qDebug() << Q_FUNC_INFO;
 }
@@ -18,13 +18,13 @@ ClientBLE::~ClientBLE()
 
 void ClientBLE::start()
 {
-    qDebug() << Q_FUNC_INFO << KFOREC_ADDRESS;
-    connecterAppareil(KFOREC_ADDRESS);
+    qDebug() << Q_FUNC_INFO << deviceAddress;
+    connecterAppareil(deviceAddress);
 }
 
 void ClientBLE::stop()
 {
-    qDebug() << Q_FUNC_INFO << KFOREC_ADDRESS;
+    qDebug() << Q_FUNC_INFO << deviceAddress;
     if (m_controller)
         m_controller->disconnectFromDevice();
 }

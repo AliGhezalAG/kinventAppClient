@@ -19,6 +19,7 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 SOURCES += \
         clientble.cpp \
+        connexionhandler.cpp \
         main.cpp
 
 # Default rules for deployment.
@@ -27,4 +28,5 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
 
 HEADERS += \
-        clientble.h
+        clientble.h \
+        connexionhandler.h

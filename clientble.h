@@ -3,7 +3,6 @@
 
 #include <QLowEnergyController>
 
-#define KFOREC_ADDRESS              "80:1F:12:B1:3C:D7"
 #define SERVICE_UUID                "{49535343-fe7d-4ae5-8fa9-9fafd205e455}"
 #define CHARACTERISTIC_UUID         "{49535343-1e4d-4bd9-ba61-23c647249616}"
 
@@ -16,7 +15,7 @@ class ClientBLE : public QObject
     Q_PROPERTY(float compteur MEMBER m_compteur NOTIFY compteurChange)
 
 public:
-    ClientBLE();
+    ClientBLE(QString address);
     ~ClientBLE();
     Q_INVOKABLE void start();
     Q_INVOKABLE void stop();
@@ -35,6 +34,7 @@ protected slots:
     void processDevice();
 
 private:
+    QString deviceAddress;
     QList<QObject*>                  m_devices;
     QLowEnergyController            *m_controller;
     QLowEnergyService               *m_service;
