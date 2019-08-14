@@ -1,5 +1,5 @@
 #include <QCoreApplication>
-#include "kinventclient.h"
+#include "clientble.h"
 
 using namespace std;
 
@@ -7,8 +7,8 @@ int main(int argc, char *argv[])
 {
     QCoreApplication a(argc, argv);
 
-    KinventClient *client = new KinventClient();
-    client->startClient();
+    ClientBLE *client = new ClientBLE();
+    client->start();
 
     return a.exec();
 }

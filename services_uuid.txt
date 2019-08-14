@@ -1,0 +1,7 @@
+service name			uuid
+Generic Access			0x1800
+Generic Attribute		0x1801
+Device Information		0x180a
+Unknown service			49535343-fe7d-4ae5-8fa9-9fafd205e455
+
+KFORCE address			80:1F:12:B1:3C:D7
