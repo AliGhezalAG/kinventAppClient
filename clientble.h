@@ -18,13 +18,16 @@ public:
     ClientBLE(QString address);
     ~ClientBLE();
     Q_INVOKABLE void start();
-    Q_INVOKABLE void stop();
+//    Q_INVOKABLE void stop();
     Q_INVOKABLE void read();
     Q_INVOKABLE void write(const QByteArray &data);
     Q_INVOKABLE void gererNotification(bool notification);
+    bool isConnected();
+    bool isActive();
+    QLowEnergyController::ControllerState getControllerState();
 
 protected slots:
-    void connecterAppareil(const QString &adresseServeur);
+    void connecterAppareil();
     void connecterService(QLowEnergyService *service);
     void ajouterService(QBluetoothUuid serviceUuid);
     void serviceDetailsDiscovered(QLowEnergyService::ServiceState newState);
@@ -32,6 +35,7 @@ protected slots:
     void appareilConnecte();
     void appareilDeconnecte();
     void processDevice();
+    void stop();
 
 private:
     QString deviceAddress;
@@ -42,10 +46,13 @@ private:
     int                              m_compteur;
     QLowEnergyCharacteristic         m_txCharacteristic;
     QLowEnergyCharacteristic         m_rxCharacteristic;
+    bool                             clientIsActive;
 
 signals:
     void connecte();
+    void doneProcessing();
     void compteurChange();
+    void processingFinished();
 };
 
 #endif // ClientBLE_H

@@ -9,10 +9,7 @@ int main(int argc, char *argv[])
     QCoreApplication a(argc, argv);
 
     ConnexionHandler *connexionHandler = new ConnexionHandler();
-    connexionHandler->startDeviceDiscovery();
-
-//    ClientBLE *client = new ClientBLE();
-//    client->start();
+    connexionHandler->start();
 
     return a.exec();
 }

@@ -2,9 +2,10 @@
 #include <QDebug>
 #include <QtEndian>
 
-ClientBLE::ClientBLE(QString address) : m_controller(nullptr), m_service(nullptr), m_etatConnexion(false), m_compteur(0), deviceAddress(address)
+ClientBLE::ClientBLE(QString address) : deviceAddress(address), m_service(nullptr), m_etatConnexion(false), m_compteur(0), clientIsActive(false)
 {
     qDebug() << Q_FUNC_INFO;
+    m_controller =  new QLowEnergyController(QBluetoothAddress(address), this);
 }
 
 ClientBLE::~ClientBLE()
@@ -18,8 +19,9 @@ ClientBLE::~ClientBLE()
 
 void ClientBLE::start()
 {
+    clientIsActive = true;
     qDebug() << Q_FUNC_INFO << deviceAddress;
-    connecterAppareil(deviceAddress);
+    connecterAppareil();
 }
 
 void ClientBLE::stop()
@@ -80,15 +82,15 @@ void ClientBLE::gererNotification(bool notification)
     }
 }
 
-void ClientBLE::connecterAppareil(const QString &adresseServeur)
+void ClientBLE::connecterAppareil()
 {
-    m_controller =  new QLowEnergyController(QBluetoothAddress(adresseServeur), this);
 
     // Slot pour la récupération des services
     connect(m_controller, SIGNAL(serviceDiscovered(QBluetoothUuid)), this, SLOT(ajouterService(QBluetoothUuid)));
     connect(m_controller, SIGNAL(connected()), this, SLOT(appareilConnecte()));
     connect(m_controller, SIGNAL(disconnected()), this, SLOT(appareilDeconnecte()));
     connect(this, SIGNAL(connecte()), this, SLOT(processDevice()));
+    connect(this, SIGNAL(processingFinished()), this, SLOT(stop()));
 
     qDebug() << Q_FUNC_INFO << "demande de connexion";
     m_controller->setRemoteAddressType(QLowEnergyController::PublicAddress);
@@ -97,7 +99,6 @@ void ClientBLE::connecterAppareil(const QString &adresseServeur)
 
 void ClientBLE::processDevice()
 {
-    qInfo() << "processing device..." << endl;
     QByteArray getDeviceTypeRequest = QByteArray::fromHex("67");
     write(getDeviceTypeRequest);
 }
@@ -129,10 +130,13 @@ void ClientBLE::serviceCharacteristicChanged(const QLowEnergyCharacteristic &c, 
 {
     if (c.uuid().toString() == CHARACTERISTIC_UUID)
     {
+        qInfo() << "processing device..." << endl;
         qInfo() << Q_FUNC_INFO << value;
         qDebug() << value;
         //qDebug() << (int)qFromLittleEndian<quint8>(value.constData());
         emit compteurChange();
+        qInfo() << "processing device done!" << endl;
+        emit processingFinished();
     }
 }
 
@@ -178,6 +182,11 @@ void ClientBLE::serviceDetailsDiscovered(QLowEnergyService::ServiceState newStat
     }
 }
 
+bool ClientBLE::isConnected()
+{
+    return m_etatConnexion;
+}
+
 void ClientBLE::appareilConnecte()
 {
     qDebug() << Q_FUNC_INFO;
@@ -188,5 +197,17 @@ void ClientBLE::appareilDeconnecte()
 {
     qDebug() << Q_FUNC_INFO;
     m_etatConnexion = false;
-    //emit connecte();
+
+    clientIsActive = false;
+    emit doneProcessing();
+}
+
+bool ClientBLE::isActive()
+{
+    return clientIsActive;
+}
+
+QLowEnergyController::ControllerState ClientBLE::getControllerState()
+{
+    return m_controller->state();
 }

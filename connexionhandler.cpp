@@ -2,33 +2,23 @@
 
 ConnexionHandler::ConnexionHandler()
 {
-    discoveryAgent = new QBluetoothDeviceDiscoveryAgent();
-    discoveryAgent->setLowEnergyDiscoveryTimeout(0);
+    discoveredDevicesList = {};
+    clientList = {};
 
-    connect(discoveryAgent, SIGNAL(deviceDiscovered(const QBluetoothDeviceInfo&)),
-            this, SLOT(processDiscoveredDevice(const QBluetoothDeviceInfo&)));
-    connect(discoveryAgent, SIGNAL(error(QBluetoothDeviceDiscoveryAgent::Error)),
-            this, SLOT(deviceScanError(QBluetoothDeviceDiscoveryAgent::Error)));
-    connect(discoveryAgent, SIGNAL(finished()), this, SLOT(deviceScanFinished()));
+    m_deviceDiscoveryAgent = new QBluetoothDeviceDiscoveryAgent(this);
+    m_deviceDiscoveryAgent->setLowEnergyDiscoveryTimeout(5000);
+
+    connect(m_deviceDiscoveryAgent, &QBluetoothDeviceDiscoveryAgent::deviceDiscovered, this, &ConnexionHandler::addDevice);
+    connect(m_deviceDiscoveryAgent, &QBluetoothDeviceDiscoveryAgent::finished, this, &ConnexionHandler::processDevices);
+    connect(m_deviceDiscoveryAgent, SIGNAL(error(QBluetoothDeviceDiscoveryAgent::Error)), this, SLOT(deviceScanError(QBluetoothDeviceDiscoveryAgent::Error)));
 }
 
 ConnexionHandler::~ConnexionHandler()
 {
-    delete discoveryAgent;
-    qDeleteAll(devices);
-    devices.clear();
-}
-
-void ConnexionHandler::startDeviceDiscovery()
-{
-    qDeleteAll(devices);
-    devices.clear();
-
-    qInfo() << "Scanning for KForce devices ..." << endl;
-    //! [les-devicediscovery-2]
-    discoveryAgent->start();
-    //! [les-devicediscovery-2]
-
+    delete m_deviceDiscoveryAgent;
+    discoveredDevicesList.clear();
+    qDeleteAll(clientList);
+    clientList.clear();
 }
 
 void ConnexionHandler::deviceScanError(QBluetoothDeviceDiscoveryAgent::Error error)
@@ -41,14 +31,45 @@ void ConnexionHandler::deviceScanError(QBluetoothDeviceDiscoveryAgent::Error err
         qInfo() << "An unknown error has occurred." << endl;
 }
 
-void ConnexionHandler::processDiscoveredDevice(const QBluetoothDeviceInfo& newDevice)
+void ConnexionHandler::addDevice(const QBluetoothDeviceInfo &device)
 {
-    qInfo() << "new device discovered" << endl;
-    if (newDevice.coreConfigurations() & QBluetoothDeviceInfo::LowEnergyCoreConfiguration) {
-        if (newDevice.name().contains("KFORCE", Qt::CaseInsensitive)){
-            ClientBLE *client = new ClientBLE(newDevice.address().toString());
-            client->start();
+    // If device is LowEnergy-device, add it to the list
+    if (device.coreConfigurations() & QBluetoothDeviceInfo::LowEnergyCoreConfiguration) {
+        discoveredDevicesList.append(device.address().toString());
+    }
+}
+
+void ConnexionHandler::start()
+{
+    while(true){
+        m_deviceDiscoveryAgent->start(QBluetoothDeviceDiscoveryAgent::LowEnergyMethod);
+        {
+            QEventLoop loop;
+            qInfo() << "start of loop";
+            discoveredDevicesList.clear();
+            qDeleteAll(clientList);
+            clientList.clear();
+            loop.connect(this, SIGNAL(scanProcessingEnded()), SLOT(quit()));
+            m_deviceDiscoveryAgent->start(QBluetoothDeviceDiscoveryAgent::LowEnergyMethod);
+            loop.exec();
+        }
+        qInfo() << "end of loop";
+    }
+}
+
+void ConnexionHandler::processDevices()
+{
+    for(int i=0; i < discoveredDevicesList.size(); i++){
+        if(devicesList.contains(discoveredDevicesList.at(i))){
+            ClientBLE *client = new ClientBLE(discoveredDevicesList.at(i));
+            {
+                QEventLoop loop;
+                loop.connect(client, SIGNAL(doneProcessing()), SLOT(quit()));
+                client->start();
+                loop.exec();
+            }
         }
     }
-    // TODO add device to devices list only if new
+    qInfo() << "this is the end dadada!";
+    emit scanProcessingEnded();
 }
