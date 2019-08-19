@@ -20,13 +20,13 @@ ClientBLE::~ClientBLE()
 void ClientBLE::start()
 {
     clientIsActive = true;
-    qDebug() << Q_FUNC_INFO << deviceAddress;
+    //    qDebug() << Q_FUNC_INFO << deviceAddress;
     connecterAppareil();
 }
 
 void ClientBLE::stop()
 {
-    qDebug() << Q_FUNC_INFO << deviceAddress;
+    //    qDebug() << Q_FUNC_INFO << deviceAddress;
     if (m_controller)
         m_controller->disconnectFromDevice();
 }
@@ -40,7 +40,7 @@ void ClientBLE::read()
             m_service->readCharacteristic(m_txCharacteristic);
             bool ok;
             m_compteur = m_txCharacteristic.value().toHex().toInt(&ok, 16);
-            qDebug() << Q_FUNC_INFO << m_txCharacteristic.value() << m_compteur;
+            //            qDebug() << Q_FUNC_INFO << m_txCharacteristic.value() << m_compteur;
             //qDebug() << (int)qFromLittleEndian<quint8>(m_txCharacteristic.value().constData());
             emit compteurChange();
         }
@@ -53,7 +53,7 @@ void ClientBLE::write(const QByteArray &data)
     {
         if (m_rxCharacteristic.properties() & QLowEnergyCharacteristic::Write)
         {
-            qDebug() << Q_FUNC_INFO << data;
+            //            qDebug() << Q_FUNC_INFO << data;
             if(data.length() <= MAX_SIZE)
                 m_service->writeCharacteristic(m_rxCharacteristic, data, QLowEnergyService::WriteWithResponse);
             else
@@ -114,14 +114,14 @@ void ClientBLE::connecterService(QLowEnergyService *service)
         // Slot pour la récupération des caractéristiques
         connect(m_service, SIGNAL(stateChanged(QLowEnergyService::ServiceState)), this, SLOT(serviceDetailsDiscovered(QLowEnergyService::ServiceState)));
 
-        qDebug() << Q_FUNC_INFO << "découverte des détails des services";
+        //        qDebug() << Q_FUNC_INFO << "découverte des détails des services";
         m_service->discoverDetails();
     }
 }
 
 void ClientBLE::ajouterService(QBluetoothUuid serviceUuid)
 {
-    qDebug() << Q_FUNC_INFO << serviceUuid.toString();
+    //    qDebug() << Q_FUNC_INFO << serviceUuid.toString();
     QLowEnergyService *service = m_controller->createServiceObject(serviceUuid);
     connecterService(service);
 }
@@ -130,14 +130,43 @@ void ClientBLE::serviceCharacteristicChanged(const QLowEnergyCharacteristic &c, 
 {
     if (c.uuid().toString() == CHARACTERISTIC_UUID)
     {
-        qInfo() << "processing device..." << endl;
-        qInfo() << Q_FUNC_INFO << value;
-        qDebug() << value;
+        //        QByteArray getDeviceTypeRequest = QByteArray::fromHex("65");
+        //        qInfo() << "processing device..." << endl;
+        //        qInfo() << Q_FUNC_INFO << value;
+        qInfo() << "received: " << value.toHex(':');
+
+        ofstream logFile;
+        logFile.open ("test.txt", ios::out | ios::app);
+        logFile << this->deviceAddress.toStdString() << " ---> " << value.toHex(':').toStdString() << endl;
+        logFile.close();
+
+        //        qInfo() << byteArrayToUint32(value.mid(0, 3));
+        //        qInfo() << byteArrayToUint32(value.mid(3, 4));
+
+        //        (value[2] & 0xFF) | (value[1]& 0xFF) | (value[0]& 0xFF) |
+        //        qInfo() << ((value[5]& 0xFF) | (value[4]& 0xFF )| (value[3]& 0xFF));
+        //        qInfo() << (((value[0] << 16) | (value[1] << 8) | value[0]));
+
+        //qInfo() << value.data();
         //qDebug() << (int)qFromLittleEndian<quint8>(value.constData());
         emit compteurChange();
-        qInfo() << "processing device done!" << endl;
+        //        qInfo() << "processing device done!" << endl;
         emit processingFinished();
     }
+}
+
+quint32 ClientBLE::byteArrayToUint32(const QByteArray &bytes)
+{
+    auto count = bytes.size();
+    if (count == 0 || count > 4) {
+        return 0;
+    }
+    quint32 number = 0U;
+    for (int i = 0; i < count; ++i) {
+        auto b = static_cast<quint32>(bytes[count - 1 - i]);
+        number += static_cast<quint32>(b << (8 * i));
+    }
+    return number;
 }
 
 void ClientBLE::serviceDetailsDiscovered(QLowEnergyService::ServiceState newState)
@@ -151,27 +180,27 @@ void ClientBLE::serviceDetailsDiscovered(QLowEnergyService::ServiceState newStat
     }
 
     QLowEnergyService *service = qobject_cast<QLowEnergyService *>(sender());
-    qDebug() << Q_FUNC_INFO << "service" << service->serviceUuid().toString();
+    //    qDebug() << Q_FUNC_INFO << "service" << service->serviceUuid().toString();
 
     if (service->serviceUuid().toString() == SERVICE_UUID)
     {
         foreach (QLowEnergyCharacteristic c, service->characteristics())
         {
-            qDebug() << Q_FUNC_INFO << "characteristic" << c.uuid().toString();
+            //            qDebug() << Q_FUNC_INFO << "characteristic" << c.uuid().toString();
             if (c.uuid().toString() == CHARACTERISTIC_UUID)
             {
-                qDebug() << Q_FUNC_INFO << "my characteristic TX" << c.uuid().toString() << (c.properties() & QLowEnergyCharacteristic::Notify);
+                //                qDebug() << Q_FUNC_INFO << "my characteristic TX" << c.uuid().toString() << (c.properties() & QLowEnergyCharacteristic::Notify);
                 m_txCharacteristic = c;
 
                 QLowEnergyDescriptor descripteurNotification = c.descriptor(QBluetoothUuid::ClientCharacteristicConfiguration);
                 if (descripteurNotification.isValid())
                 {
                     // active la notification : 0100 ou désactive 0000
-                    qDebug() << Q_FUNC_INFO << "modification notification" << c.uuid().toString();
+                    //                    qDebug() << Q_FUNC_INFO << "modification notification" << c.uuid().toString();
                     service->writeDescriptor(descripteurNotification, QByteArray::fromHex("0100"));
                 }
 
-                qDebug() << Q_FUNC_INFO << "my characteristic RX" << c.uuid().toString() << (c.properties() & QLowEnergyCharacteristic::Write);
+                //                qDebug() << Q_FUNC_INFO << "my characteristic RX" << c.uuid().toString() << (c.properties() & QLowEnergyCharacteristic::Write);
                 m_service = service;
                 m_rxCharacteristic = c;
             }
@@ -189,13 +218,13 @@ bool ClientBLE::isConnected()
 
 void ClientBLE::appareilConnecte()
 {
-    qDebug() << Q_FUNC_INFO;
+    //    qDebug() << Q_FUNC_INFO;
     m_controller->discoverServices();
 }
 
 void ClientBLE::appareilDeconnecte()
 {
-    qDebug() << Q_FUNC_INFO;
+    //    qDebug() << Q_FUNC_INFO;
     m_etatConnexion = false;
 
     clientIsActive = false;

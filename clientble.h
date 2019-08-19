@@ -2,6 +2,12 @@
 #define ClientBLE_H
 
 #include <QLowEnergyController>
+#include <QDataStream>
+
+#include <iostream>
+#include <fstream>
+
+using namespace std;
 
 #define SERVICE_UUID                "{49535343-fe7d-4ae5-8fa9-9fafd205e455}"
 #define CHARACTERISTIC_UUID         "{49535343-1e4d-4bd9-ba61-23c647249616}"
@@ -47,6 +53,7 @@ private:
     QLowEnergyCharacteristic         m_txCharacteristic;
     QLowEnergyCharacteristic         m_rxCharacteristic;
     bool                             clientIsActive;
+    quint32 byteArrayToUint32(const QByteArray &bytes);
 
 signals:
     void connecte();
