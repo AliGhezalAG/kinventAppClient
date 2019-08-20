@@ -2,7 +2,7 @@
 #include <QDebug>
 #include <QtEndian>
 
-ClientBLE::ClientBLE(QString address) : deviceAddress(address), m_service(nullptr), m_etatConnexion(false), m_compteur(0), clientIsActive(false)
+ClientBLE::ClientBLE(QString address) : deviceAddress(address), m_service(nullptr), m_etatConnexion(false), m_compteur(0), clientIsActive(false), measurementMultiplierSet(false), baselineSet(false)
 {
     qDebug() << Q_FUNC_INFO;
     m_controller =  new QLowEnergyController(QBluetoothAddress(address), this);
@@ -89,7 +89,11 @@ void ClientBLE::connecterAppareil()
     connect(m_controller, SIGNAL(serviceDiscovered(QBluetoothUuid)), this, SLOT(ajouterService(QBluetoothUuid)));
     connect(m_controller, SIGNAL(connected()), this, SLOT(appareilConnecte()));
     connect(m_controller, SIGNAL(disconnected()), this, SLOT(appareilDeconnecte()));
-    connect(this, SIGNAL(connecte()), this, SLOT(processDevice()));
+
+    connect(this, SIGNAL(connecte()), this, SLOT(getMeasurementMultiplier()));
+    connect(this, SIGNAL(processMeasurementMultiplierFinished()), this, SLOT(getBaseline()));
+    connect(this, SIGNAL(processBaselineFinished()), this, SLOT(getData()));
+
     connect(this, SIGNAL(processingFinished()), this, SLOT(stop()));
 
     qDebug() << Q_FUNC_INFO << "demande de connexion";
@@ -97,7 +101,19 @@ void ClientBLE::connecterAppareil()
     m_controller->connectToDevice();
 }
 
-void ClientBLE::processDevice()
+void ClientBLE::getMeasurementMultiplier()
+{
+    QByteArray getDeviceTypeRequest = QByteArray::fromHex("21");
+    write(getDeviceTypeRequest);
+}
+
+void ClientBLE::getBaseline()
+{
+    QByteArray getDeviceTypeRequest = QByteArray::fromHex("43");
+    write(getDeviceTypeRequest);
+}
+
+void ClientBLE::getData()
 {
     QByteArray getDeviceTypeRequest = QByteArray::fromHex("67");
     write(getDeviceTypeRequest);
@@ -130,28 +146,51 @@ void ClientBLE::serviceCharacteristicChanged(const QLowEnergyCharacteristic &c, 
 {
     if (c.uuid().toString() == CHARACTERISTIC_UUID)
     {
-        //        QByteArray getDeviceTypeRequest = QByteArray::fromHex("65");
-        //        qInfo() << "processing device..." << endl;
-        //        qInfo() << Q_FUNC_INFO << value;
-        qInfo() << "received: " << value.toHex(':');
+        if(!measurementMultiplierSet){
+            QByteArray val = QByteArray::fromHex(value.toHex(':'));
+            measurementMultiplier = val.toInt()/2000000.0;
 
-        ofstream logFile;
-        logFile.open ("test.txt", ios::out | ios::app);
-        logFile << this->deviceAddress.toStdString() << " ---> " << value.toHex(':').toStdString() << endl;
-        logFile.close();
+            logFile.open ("test.txt", ios::out | ios::app);
+            logFile << "Measurement multiplier: " << measurementMultiplier << endl;
+            logFile.close();
 
-        //        qInfo() << byteArrayToUint32(value.mid(0, 3));
-        //        qInfo() << byteArrayToUint32(value.mid(3, 4));
+            measurementMultiplierSet = true;
+            emit processMeasurementMultiplierFinished();
+        } else if (!baselineSet){
+            baseline1 = byteArrayToUint16(value.mid(0,2));
+            baseline2 = byteArrayToUint16(value.mid(2,2));
 
-        //        (value[2] & 0xFF) | (value[1]& 0xFF) | (value[0]& 0xFF) |
-        //        qInfo() << ((value[5]& 0xFF) | (value[4]& 0xFF )| (value[3]& 0xFF));
-        //        qInfo() << (((value[0] << 16) | (value[1] << 8) | value[0]));
+            logFile.open ("test.txt", ios::out | ios::app);
+            logFile << "baseline1: " << baseline1 << endl;
+            logFile << "baseline2: " << baseline2 << endl;
+            logFile.close();
 
-        //qInfo() << value.data();
-        //qDebug() << (int)qFromLittleEndian<quint8>(value.constData());
-        emit compteurChange();
-        //        qInfo() << "processing device done!" << endl;
-        emit processingFinished();
+            baselineSet = true;
+            emit processBaselineFinished();
+        } else {
+            qInfo() << "received: " << value.toHex(':') << "global data size : " << receivedData.size();
+            receivedData.append(value);
+            if (receivedData.size() >= 128000){
+
+                logFile.open ("test.txt", ios::out | ios::app);
+
+                quint32 entry1DataNb = byteArrayToUint32(receivedData.mid(0,3));
+                quint32 entry1TimeStamp = byteArrayToUint32(receivedData.mid(3,4));
+
+                logFile << "Number of data bytes: " << entry1DataNb << endl;
+                logFile << "Timestamp: " << entry1TimeStamp << endl;
+
+                for (int j = 7; j < static_cast<int>(entry1DataNb) ; j+=4) {
+                    double mes1 = (baseline1 - byteArrayToUint16(receivedData.mid(j,2))) * measurementMultiplier;
+                    double mes2 = (baseline2 - byteArrayToUint16(receivedData.mid(j+2,2))) * measurementMultiplier;
+
+                    logFile << "Measure1: " << mes1 << " Measure2: " << mes2 << endl;
+                }
+
+                logFile.close();
+                emit processingFinished();
+            }
+        }
     }
 }
 
@@ -165,6 +204,20 @@ quint32 ClientBLE::byteArrayToUint32(const QByteArray &bytes)
     for (int i = 0; i < count; ++i) {
         auto b = static_cast<quint32>(bytes[count - 1 - i]);
         number += static_cast<quint32>(b << (8 * i));
+    }
+    return number;
+}
+
+quint16 ClientBLE::byteArrayToUint16(const QByteArray &bytes)
+{
+    auto count = bytes.size();
+    if (count == 0 || count > 2) {
+        return 0;
+    }
+    quint16 number = 0U;
+    for (int i = 0; i < count; ++i) {
+        auto b = static_cast<quint16>(bytes[count - 1 - i]);
+        number += static_cast<quint16>(b << (8 * i));
     }
     return number;
 }

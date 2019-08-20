@@ -40,7 +40,9 @@ protected slots:
     void serviceCharacteristicChanged(const QLowEnergyCharacteristic &c, const QByteArray &value);
     void appareilConnecte();
     void appareilDeconnecte();
-    void processDevice();
+    void getMeasurementMultiplier();
+    void getBaseline();
+    void getData();
     void stop();
 
 private:
@@ -53,12 +55,22 @@ private:
     QLowEnergyCharacteristic         m_txCharacteristic;
     QLowEnergyCharacteristic         m_rxCharacteristic;
     bool                             clientIsActive;
+    QByteArray                      receivedData;
+    double                           measurementMultiplier;
+    quint16                         baseline1;
+    quint16                         baseline2;
+    bool                            measurementMultiplierSet;
+    bool                            baselineSet;
+    ofstream                        logFile;
     quint32 byteArrayToUint32(const QByteArray &bytes);
+    quint16 byteArrayToUint16(const QByteArray &bytes);
 
 signals:
     void connecte();
     void doneProcessing();
     void compteurChange();
+    void processMeasurementMultiplierFinished();
+    void processBaselineFinished();
     void processingFinished();
 };
 
