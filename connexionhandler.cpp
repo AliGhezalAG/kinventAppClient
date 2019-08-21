@@ -2,11 +2,6 @@
 
 ConnexionHandler::ConnexionHandler()
 {
-    std::time_t result = std::time(nullptr);
-    string logTitle = std::ctime(&result);
-    logFile.open (logTitle + ".log", ios::out | ios::app);
-    logFile << logTitle << endl;
-
     discoveredDevicesList = {};
     clientList = {};
 

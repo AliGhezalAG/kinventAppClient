@@ -149,77 +149,71 @@ void ClientBLE::serviceCharacteristicChanged(const QLowEnergyCharacteristic &c, 
         if(!measurementMultiplierSet){
             QByteArray val = QByteArray::fromHex(value.toHex(':'));
             measurementMultiplier = val.toInt()/2000000.0;
-
-            logFile.open ("test.txt", ios::out | ios::app);
-            logFile << "Measurement multiplier: " << measurementMultiplier << endl;
-            logFile.close();
-
             measurementMultiplierSet = true;
             emit processMeasurementMultiplierFinished();
+
         } else if (!baselineSet){
-            baseline1 = byteArrayToUint16(value.mid(0,2));
-            baseline2 = byteArrayToUint16(value.mid(2,2));
-
-            logFile.open ("test.txt", ios::out | ios::app);
-            logFile << "baseline1: " << baseline1 << endl;
-            logFile << "baseline2: " << baseline2 << endl;
-            logFile.close();
-
+            baseline1 = byteArrayToInt(value.mid(0,2));
+            baseline2 = byteArrayToInt(value.mid(2,2));
             baselineSet = true;
             emit processBaselineFinished();
+
         } else {
-            qInfo() << "received: " << value.toHex(':') << "global data size : " << receivedData.size();
+//            qInfo() << "received: " << value.toHex(':') << "global data size : " << receivedData.size();
             receivedData.append(value);
             if (receivedData.size() >= 128000){
-
-                logFile.open ("test.txt", ios::out | ios::app);
-
-                quint32 entry1DataNb = byteArrayToUint32(receivedData.mid(0,3));
-                quint32 entry1TimeStamp = byteArrayToUint32(receivedData.mid(3,4));
-
-                logFile << "Number of data bytes: " << entry1DataNb << endl;
-                logFile << "Timestamp: " << entry1TimeStamp << endl;
-
-                for (int j = 7; j < static_cast<int>(entry1DataNb) ; j+=4) {
-                    double mes1 = (baseline1 - byteArrayToUint16(receivedData.mid(j,2))) * measurementMultiplier;
-                    double mes2 = (baseline2 - byteArrayToUint16(receivedData.mid(j+2,2))) * measurementMultiplier;
-
-                    logFile << "Measure1: " << mes1 << " Measure2: " << mes2 << endl;
-                }
-
-                logFile.close();
+                processReceivedData();
                 emit processingFinished();
             }
         }
     }
 }
 
-quint32 ClientBLE::byteArrayToUint32(const QByteArray &bytes)
+void ClientBLE::processReceivedData()
 {
-    auto count = bytes.size();
-    if (count == 0 || count > 4) {
-        return 0;
+    int count = 0;
+    std::time_t result = std::time(nullptr);
+    string logTitle = std::ctime(&result);
+
+    logFile.open ("test.txt", ios::out | ios::app);
+
+    logFile << "Time and Date: " << logTitle << endl;
+    logFile << "device: " << this->deviceAddress.toStdString() << endl;
+    logFile << "Measurement multiplier: " << measurementMultiplier << endl;
+    logFile << "baseline1: " << baseline1 << endl;
+    logFile << "baseline2: " << baseline2 << endl;
+
+    while(count < receivedData.size()){
+
+        int entry1DataNb = byteArrayToInt(receivedData.mid(count,3));
+        qInfo() << "entry data nb: " << entry1DataNb;
+
+        if (entry1DataNb == 0)
+            break;
+
+        int entry1TimeStamp = byteArrayToInt(receivedData.mid(count+3,4));
+
+        logFile << "Number of data bytes: " << entry1DataNb << endl;
+        logFile << "Timestamp: " << entry1TimeStamp << endl;
+
+        for (int j = count + 7; j < count + static_cast<int>(entry1DataNb) ; j+=4) {
+            double mes1 = (baseline1 - byteArrayToInt(receivedData.mid(j,2))) * measurementMultiplier;
+            double mes2 = (baseline2 - byteArrayToInt(receivedData.mid(j+2,2))) * measurementMultiplier;
+
+            logFile << "Measure1: " << mes1 << " Measure2: " << mes2 << endl;
+        }
+
+        count += entry1DataNb+7;
     }
-    quint32 number = 0U;
-    for (int i = 0; i < count; ++i) {
-        auto b = static_cast<quint32>(bytes[count - 1 - i]);
-        number += static_cast<quint32>(b << (8 * i));
-    }
-    return number;
+
+    logFile.close();
 }
 
-quint16 ClientBLE::byteArrayToUint16(const QByteArray &bytes)
-{
-    auto count = bytes.size();
-    if (count == 0 || count > 2) {
-        return 0;
-    }
-    quint16 number = 0U;
-    for (int i = 0; i < count; ++i) {
-        auto b = static_cast<quint16>(bytes[count - 1 - i]);
-        number += static_cast<quint16>(b << (8 * i));
-    }
-    return number;
+int ClientBLE::byteArrayToInt(const QByteArray &bytes){
+    QByteArray bytesToHex = bytes.toHex(0);
+    bool ok;
+    int hex = bytesToHex.toInt(&ok, 16);
+    return hex;
 }
 
 void ClientBLE::serviceDetailsDiscovered(QLowEnergyService::ServiceState newState)

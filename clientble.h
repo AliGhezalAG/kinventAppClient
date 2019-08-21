@@ -47,23 +47,23 @@ protected slots:
 
 private:
     QString deviceAddress;
-    QList<QObject*>                  m_devices;
-    QLowEnergyController            *m_controller;
-    QLowEnergyService               *m_service;
-    bool                             m_etatConnexion;
-    int                              m_compteur;
-    QLowEnergyCharacteristic         m_txCharacteristic;
-    QLowEnergyCharacteristic         m_rxCharacteristic;
-    bool                             clientIsActive;
+    QList<QObject*>                 m_devices;
+    QLowEnergyController           *m_controller;
+    QLowEnergyService              *m_service;
+    bool                            m_etatConnexion;
+    int                             m_compteur;
+    QLowEnergyCharacteristic        m_txCharacteristic;
+    QLowEnergyCharacteristic        m_rxCharacteristic;
+    bool                            clientIsActive;
     QByteArray                      receivedData;
-    double                           measurementMultiplier;
-    quint16                         baseline1;
-    quint16                         baseline2;
+    double                          measurementMultiplier;
+    int                             baseline1;
+    int                             baseline2;
     bool                            measurementMultiplierSet;
     bool                            baselineSet;
     ofstream                        logFile;
-    quint32 byteArrayToUint32(const QByteArray &bytes);
-    quint16 byteArrayToUint16(const QByteArray &bytes);
+    void processReceivedData();
+    int byteArrayToInt(const QByteArray &bytes);
 
 signals:
     void connecte();
