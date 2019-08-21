@@ -159,7 +159,7 @@ void ClientBLE::serviceCharacteristicChanged(const QLowEnergyCharacteristic &c, 
             emit processBaselineFinished();
 
         } else {
-//            qInfo() << "received: " << value.toHex(':') << "global data size : " << receivedData.size();
+            //            qInfo() << "received: " << value.toHex(':') << "global data size : " << receivedData.size();
             receivedData.append(value);
             if (receivedData.size() >= 128000){
                 processReceivedData();
@@ -172,38 +172,57 @@ void ClientBLE::serviceCharacteristicChanged(const QLowEnergyCharacteristic &c, 
 void ClientBLE::processReceivedData()
 {
     int count = 0;
-    std::time_t result = std::time(nullptr);
-    string logTitle = std::ctime(&result);
+    std::time_t timeDate = std::time(nullptr);
+    string timeDateStr = std::ctime(&timeDate);
+    timeDateStr.erase(std::remove(timeDateStr.begin(), timeDateStr.end(), '\n'), timeDateStr.end());
 
-    logFile.open ("test.txt", ios::out | ios::app);
+    logFile.open ("results.csv", ios::out | ios::app);
 
-    logFile << "Time and Date: " << logTitle << endl;
-    logFile << "device: " << this->deviceAddress.toStdString() << endl;
-    logFile << "Measurement multiplier: " << measurementMultiplier << endl;
-    logFile << "baseline1: " << baseline1 << endl;
-    logFile << "baseline2: " << baseline2 << endl;
+    logFile << "Time/date, Device address, Measurement multiplier, Baseline 1, Baseline 2, Timestamp, Nb of measures, Base measure 1, Base measure 2, Measure 1, Measure 2" << endl;
+
 
     while(count < receivedData.size()){
 
-        int entry1DataNb = byteArrayToInt(receivedData.mid(count,3));
-        qInfo() << "entry data nb: " << entry1DataNb;
+        int entryDataNb = byteArrayToInt(receivedData.mid(count,3));
 
-        if (entry1DataNb == 0)
+        if (entryDataNb == 0)
             break;
 
-        int entry1TimeStamp = byteArrayToInt(receivedData.mid(count+3,4));
+        int entryTimeStamp = byteArrayToInt(receivedData.mid(count+3,4));
 
-        logFile << "Number of data bytes: " << entry1DataNb << endl;
-        logFile << "Timestamp: " << entry1TimeStamp << endl;
+        logFile << timeDateStr << ","
+                << this->deviceAddress.toStdString() << ","
+                << measurementMultiplier << ","
+                << baseline1 << ","
+                << baseline2 << ","
+                << entryTimeStamp << ","
+                << (entryDataNb/4) << ","
+                <<  ","
+                 <<  ","
+                <<  ","
+                << endl;
 
-        for (int j = count + 7; j < count + static_cast<int>(entry1DataNb) ; j+=4) {
-            double mes1 = (baseline1 - byteArrayToInt(receivedData.mid(j,2))) * measurementMultiplier;
-            double mes2 = (baseline2 - byteArrayToInt(receivedData.mid(j+2,2))) * measurementMultiplier;
+        for (int j = count + 7; j < count + static_cast<int>(entryDataNb) ; j+=4) {
+            int baseMes1 = byteArrayToInt(receivedData.mid(j,2));
+            int baseMes2 = byteArrayToInt(receivedData.mid(j+2,2));
+            double mes1 = (baseline1 - baseMes1) * measurementMultiplier;
+            double mes2 = (baseline2 - baseMes2) * measurementMultiplier;
 
-            logFile << "Measure1: " << mes1 << " Measure2: " << mes2 << endl;
+            logFile << ","
+                    << ","
+                    << ","
+                    << ","
+                    << ","
+                    << ","
+                    << ","
+                    << baseMes1 << ","
+                    << baseMes2 << ","
+                    << mes1 << ","
+                    << mes2
+                    << endl;
         }
 
-        count += entry1DataNb+7;
+        count += entryDataNb+7;
     }
 
     logFile.close();
